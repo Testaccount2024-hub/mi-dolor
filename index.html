@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Dolor (demo)</title>
+<style>
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+       margin: 0; background: #f6f8fb; color: #1a202c; }
+header { background: #2b6cb0; color: white; padding: 16px; text-align: center; }
+main { padding: 16px; max-width: 800px; margin: auto; }
+section { background: white; padding: 16px; margin-bottom: 16px; border-radius: 12px;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+h1 { margin: 0; font-size: 24px; }
+h2 { margin-top: 0; }
+label { display: block; margin: 8px 0 4px; }
+input[type=range] { width: 100%; }
+button { padding: 10px 14px; border: none; border-radius: 8px; font-size: 15px; }
+button.primary { background: #2b6cb0; color: white; }
+#message { margin-top: 8px; font-size: 14px; color: green; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mi Dolor</h1>
+</header>
+<main>
+  <section>
+    <h2>Registro diario</h2>
+    <label>Dolor de la mañana (0-10)</label>
+    <input type="range" id="painMorning" min="0" max="10" value="0" oninput="pmValue.textContent=this.value">
+    <div>Valor: <span id="pmValue">0</span></div>
+
+    <label>Dolor de la tarde (0-10)</label>
+    <input type="range" id="painAfternoon" min="0" max="10" value="0" oninput="paValue.textContent=this.value">
+    <div>Valor: <span id="paValue">0</span></div>
+
+    <label>Dolor de la noche anterior (0-10)</label>
+    <input type="range" id="painNight" min="0" max="10" value="0" oninput="pnValue.textContent=this.value">
+    <div>Valor: <span id="pnValue">0</span></div>
+
+    <button class="primary" onclick="saveData()">Guardar</button>
+    <div id="message"></div>
+  </section>
+
+  <section>
+    <h2>Historial</h2>
+    <ul id="history"></ul>
+  </section>
+</main>
+
+<script>
+function loadData() {
+  return JSON.parse(localStorage.getItem('miDolorData') || '[]');
+}
+function saveData() {
+  const data = loadData();
+  const today = new Date().toISOString().split('T')[0];
+  const entry = {
+    date: today,
+    painMorning: document.getElementById('painMorning').value,
+    painAfternoon: document.getElementById('painAfternoon').value,
+    painNight: document.getElementById('painNight').value
+  };
+  const existingIndex = data.findIndex(e => e.date === today);
+  if (existingIndex >= 0) {
+    data[existingIndex] = entry;
+  } else {
+    data.push(entry);
+  }
+  localStorage.setItem('miDolorData', JSON.stringify(data));
+  document.getElementById('message').textContent = "✅ Guardado";
+  renderHistory();
+}
+function renderHistory() {
+  const data = loadData();
+  const historyList = document.getElementById('history');
+  historyList.innerHTML = '';
+  data.forEach(entry => {
+    const li = document.createElement('li');
+    li.textContent = `${entry.date} → Mañana: ${entry.painMorning}, Tarde: ${entry.painAfternoon}, Noche: ${entry.painNight}`;
+    historyList.appendChild(li);
+  });
+}
+renderHistory();
+</script>
+</body>
+</html>
