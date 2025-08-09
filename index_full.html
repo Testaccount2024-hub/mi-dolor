@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Dolor — demo completa</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --track-bg:#E2E8F0;
+  --thumb:#2b6cb0;
+  --green:#38A169; /* 0–2 */
+  --yellow:#ECC94B; /* 3–7 */
+  --red:#E53E3E; /* 8–10 */
+  --card:#ffffff;
+  --ink:#1a202c;
+  --muted:#4a5568;
+  --brand:#2b6cb0;
+  --accent:#ecc94b;
+}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin:0;background:#f6f8fb;color:var(--ink)}
+header{background:var(--brand);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+h1{font-size:22px;margin:0}
+#streak{font-weight:600}
+main{padding:16px;max-width:1000px;margin:0 auto}
+.card{background:var(--card);border-radius:12px;padding:16px 16px 20px;margin-bottom:16px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+h2{margin:0 0 12px 0;font-size:18px}
+.field{margin-bottom:12px}
+.field label{display:block;margin-bottom:6px}
+.value{font-weight:600;margin-left:8px}
+/* Tabs */
+.tabs{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.tab{background:#edf2f7;border:none;border-radius:8px;padding:8px 12px;cursor:pointer}
+.tab.active{background:var(--brand);color:#fff}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+/* Range (slider) base */
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;border-radius:999px;outline:none;background:var(--track-bg);transition:background 120ms ease}
+input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:var(--thumb);border:none;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+input[type=range]::-moz-range-thumb{ width:26px;height:26px;border:none;border-radius:50%;background:var(--thumb);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+input[type=range]::-moz-range-track{ height:14px;background:transparent;border:none}
+/* Buttons */
+button{background:#e2e8f0;border:none;border-radius:10px;padding:10px 14px;font-size:15px;cursor:pointer}
+button.primary{background:var(--brand);color:#fff}
+button:hover{filter:brightness(0.98)}
+.actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+/* Progress */
+.progress-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.progress{background:#edf2f7;border-radius:8px;height:10px;overflow:hidden}
+.bar{background:var(--accent);height:10px;width:0;border-radius:8px}
+.insight{margin-top:10px;padding:10px;border-left:4px solid var(--brand);background:#ebf8ff;border-radius:8px}
+footer{padding:16px;text-align:center;color:var(--muted)}
+.small{color:var(--muted);font-size:13px}
+hr.sep{border:none;border-top:1px solid #edf2f7;margin:12px 0}
+/* Responsive charts */
+.chart-wrap{height:180px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mi Dolor</h1>
+  <div id="streak">Racha: 0 días</div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Registrar hoy</h2>
+    <div class="tabs">
+      <button class="tab active" data-tab="noche">Noche</button>
+      <button class="tab" data-tab="manana">Mañana</button>
+    </div>
+
+    <div id="form-messages" class="small" aria-live="polite"></div>
+
+    <!-- NOCHE -->
+    <div id="tab-noche" class="tab-panel active">
+      <div class="field">
+        <label>Dolor de la noche anterior (0–10)
+          <span class="value" id="v-prevNight">0</span>
+        </label>
+        <input type="range" id="painPrevNight" min="0" max="10" step="1" value="0">
+      </div>
+      <div class="field">
+        <label>Dolor de hoy (0–10)
+          <span class="value" id="v-day">0</span>
+        </label>
+        <input type="range" id="painDay" min="0" max="10" step="1" value="0">
+      </div>
+      <div class="field">
+        <label>Dolor de la tarde (0–10)
+          <span class="value" id="v-afternoon">0</span>
+        </label>
+        <input type="range" id="painAfternoon" min="0" max="10" step="1" value="0">
+      </div>
+
+      <div id="night-dynamic"></div>
+
+      <div class="actions-row">
+        <button class="primary" id="saveNight">Guardar noche</button>
+        <button id="clearNight">Vaciar noche</button>
+      </div>
+    </div>
+
+    <!-- MAÑANA -->
+    <div id="tab-manana" class="tab-panel">
+      <div class="field">
+        <label>Dolor de la mañana (0–10)
+          <span class="value" id="v-morning">0</span>
+        </label>
+        <input type="range" id="painMorning" min="0" max="10" step="1" value="0">
+      </div>
+
+      <div id="morning-dynamic"></div>
+
+      <div class="actions-row">
+        <button class="primary" id="saveMorning">Guardar mañana</button>
+        <button id="clearMorning">Vaciar mañana</button>
+      </div>
+    </div>
+
+    <hr class="sep">
+    <div class="actions-row">
+      <button id="copyYesterday">Igual que ayer</button>
+      <button id="clearToday">Vaciar todo hoy</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Progreso</h2>
+    <div class="progress-row">
+      <div>
+        <div class="small">Análisis de sueño</div>
+        <div class="progress"><div id="sleepProgress" class="bar" style="width:0%"></div></div>
+      </div>
+      <div>
+        <div class="small">Análisis de pasos</div>
+        <div class="progress"><div id="stepsProgress" class="bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div id="insight" class="insight small"></div>
+  </section>
+
+  <section class="card">
+    <h2>Tendencias</h2>
+    <div class="chart-wrap"><canvas id="painLine"></canvas></div>
+    <div class="small" style="margin:8px 0 4px">Dispersión: Caminata (ayer) vs Dolor (hoy)</div>
+    <div class="chart-wrap"><canvas id="scatter"></canvas></div>
+  </section>
+
+  <section class="card">
+    <h2>Ajustes</h2>
+    <p class="small">Activa las variables que quieres registrar. La app solo mostrará las activas.</p>
+    <div id="settings"></div>
+    <div class="actions-row" style="margin-top:8px">
+      <button id="exportBtn">Exportar JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+      <button id="importBtn">Importar JSON</button>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <small>Demo local de “Mi Dolor” — tus datos se guardan solo en este navegador.</small>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// ----- Persistencia -----
+const LS = {
+  load(key, def){ try{ return JSON.parse(localStorage.getItem(key)) ?? def } catch(e){ return def } },
+  save(key, val){ localStorage.setItem(key, JSON.stringify(val)) }
+};
+
+// ----- Config por defecto -----
+const DEFAULT_SETTINGS = {
+  variables: {
+    stress: true,
+    mood: true,
+    busy: true,
+    exercise: true,
+    exerciseLegs: true,
+    walkMin: true,
+    standHours: true,
+    hydration: true,
+    alcohol: false,
+    notes: true
+  }
+};
+
+let settings = LS.load('settings', DEFAULT_SETTINGS);
+let entries = LS.load('entries', []); // [{date, morning:{}, night:{} }]
+
+// ----- Helpers -----
+const fmtDate = (d=new Date()) => d.toISOString().slice(0,10);
+const yyyymmdd = (d)=> d.toISOString().slice(0,10);
+const today = fmtDate(new Date());
+const yesterday = fmtDate(new Date(Date.now()-86400000));
+
+function upsertEntry(date){
+  let e = entries.find(x=>x.date===date);
+  if(!e){ e = { date, morning:{}, night:{} }; entries.push(e); }
+  return e;
+}
+function saveAll(){ LS.save('entries', entries); computeAndRender(); }
+
+// ----- Colorear sliders -----
+function thresholdColor(val){
+  if(val <= 2) return getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  if(val <= 7) return getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+}
+function paintRange(el){
+  const max = Number(el.max||10);
+  const min = Number(el.min||0);
+  const val = Number(el.value||0);
+  const pct = ((val-min)/(max-min))*100;
+  const color = thresholdColor(val);
+  el.style.background = `linear-gradient(to right, ${color} 0% ${pct}%, var(--track-bg) ${pct}% 100%)`;
+}
+
+// ----- Variables dinámicas -----
+const VAR_DEFS = {
+  // Mañana
+  stress: { label:'Estrés (0–10)', type:'slider', min:0, max:10, step:1, tab:'morning' },
+  mood: { label:'Estado de ánimo (0–10)', type:'slider', min:0, max:10, step:1, tab:'morning' },
+  busy: { label:'Ocupación del día (0–10)', type:'slider', min:0, max:10, step:1, tab:'morning' },
+  exercise: { label:'¿Hiciste ejercicios?', type:'toggle', tab:'morning' },
+  exerciseLegs: { label:'¿Entrenaste piernas?', type:'toggle', tab:'morning', dependsOn:'exercise' },
+  walkMin: { label:'Caminata (min)', type:'stepper', min:0, max:600, step:5, tab:'morning' },
+  standHours: { label:'Tiempo de pie (horas)', type:'stepper', min:0, max:18, step:1, tab:'morning' },
+  hydration: { label:'Hidratación (vasos)', type:'stepper', min:0, max:20, step:1, tab:'morning' },
+
+  // Noche
+  alcohol: { label:'¿Consumiste alcohol?', type:'toggle', tab:'night' },
+  notes: { label:'Notas', type:'text', tab:'night' }
+};
+
+function renderSettings(){
+  const cont = document.getElementById('settings');
+  cont.innerHTML='';
+  Object.keys(VAR_DEFS).forEach(k=>{
+    const row = document.createElement('div');
+    row.className='field';
+    const lab = document.createElement('label');
+    lab.textContent = VAR_DEFS[k].label;
+    const input = document.createElement('input');
+    input.type='checkbox'; input.checked = !!settings.variables[k];
+    input.onchange = ()=>{ settings.variables[k]=input.checked; LS.save('settings', settings); renderDynamicForms(); };
+    row.appendChild(lab); row.appendChild(input);
+    cont.appendChild(row);
+  });
+}
+
+function makeField(k, data){
+  const def = VAR_DEFS[k];
+  if(def.dependsOn && !data[def.dependsOn]) return null;
+  const wrap = document.createElement('div'); wrap.className='field';
+  const lab = document.createElement('label'); lab.textContent = def.label;
+  wrap.appendChild(lab);
+  let el;
+  switch(def.type){
+    case 'slider':
+      el = document.createElement('input'); el.type='range';
+      el.min=def.min; el.max=def.max; el.step=def.step; el.value = data[k] ?? 0;
+      const out = document.createElement('span'); out.className='value'; out.textContent = el.value;
+      el.oninput = ()=>{ out.textContent = el.value; data[k] = Number(el.value); paintRange(el); };
+      wrap.appendChild(el); wrap.appendChild(out); paintRange(el); break;
+    case 'toggle':
+      el = document.createElement('select');
+      ['No','Sí'].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
+      el.value = data[k] ? 'Sí':'No';
+      el.onchange = ()=>{ data[k] = (el.value==='Sí'); renderDynamicForms(); };
+      wrap.appendChild(el); break;
+    case 'stepper':
+      const minus = document.createElement('button'); minus.textContent='–';
+      const out2 = document.createElement('span'); out2.style.margin='0 8px'; out2.textContent = data[k] ?? 0;
+      const plus = document.createElement('button'); plus.textContent='+';
+      const clamp = (v)=> Math.min(def.max, Math.max(def.min, v));
+      minus.onclick = (e)=>{ e.preventDefault(); data[k]=clamp((data[k]??0)-def.step); out2.textContent=data[k]; };
+      plus.onclick = (e)=>{ e.preventDefault(); data[k]=clamp((data[k]??0)+def.step); out2.textContent=data[k]; };
+      wrap.appendChild(minus); wrap.appendChild(out2); wrap.appendChild(plus); break;
+    case 'text':
+      el = document.createElement('input'); el.type='text'; el.value = data[k] ?? '';
+      el.placeholder = 'Escribe una nota (opcional)';
+      el.oninput = ()=>{ data[k]=el.value; };
+      wrap.appendChild(el); break;
+  }
+  return wrap;
+}
+
+function renderDynamicForms(){
+  const e = upsertEntry(today);
+  const morning = e.morning; const night = e.night;
+  const mCont = document.getElementById('morning-dynamic');
+  const nCont = document.getElementById('night-dynamic');
+  mCont.innerHTML=''; nCont.innerHTML='';
+  for(const k of Object.keys(VAR_DEFS)){
+    if(!settings.variables[k]) continue;
+    const def = VAR_DEFS[k];
+    const data = def.tab==='morning' ? morning : night;
+    const node = makeField(k, data);
+    if(node){ (def.tab==='morning'? mCont : nCont).appendChild(node); }
+  }
+}
+
+// ----- Tabs -----
+document.addEventListener('click', (e)=>{
+  if(e.target.classList.contains('tab')){
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById('tab-'+e.target.dataset.tab).classList.add('active');
+  }
+});
+
+// ----- Sliders base (pain) -----
+const sPrevNight = document.getElementById('painPrevNight');
+const sDay = document.getElementById('painDay');
+const sAfternoon = document.getElementById('painAfternoon');
+const sMorning = document.getElementById('painMorning');
+const outPrevNight = document.getElementById('v-prevNight');
+const outDay = document.getElementById('v-day');
+const outAfternoon = document.getElementById('v-afternoon');
+const outMorning = document.getElementById('v-morning');
+
+[sPrevNight, sDay, sAfternoon, sMorning].forEach(el=>{
+  el.addEventListener('input', ()=> paintRange(el) );
+  paintRange(el);
+});
+sPrevNight.addEventListener('input', ()=> outPrevNight.textContent = sPrevNight.value);
+sDay.addEventListener('input', ()=> outDay.textContent = sDay.value);
+sAfternoon.addEventListener('input', ()=> outAfternoon.textContent = sAfternoon.value);
+sMorning.addEventListener('input', ()=> outMorning.textContent = sMorning.value);
+
+// ----- Guardar / Vaciar -----
+function showMsg(txt){ const box = document.getElementById('form-messages'); box.textContent = txt; setTimeout(()=>box.textContent='', 2000); }
+
+document.getElementById('saveNight').onclick = ()=>{
+  const e = upsertEntry(today);
+  e.night.painPrevNight = Number(sPrevNight.value);
+  e.night.painDay = Number(sDay.value);
+  e.night.painAfternoon = Number(sAfternoon.value);
+  saveAll(); showMsg('✅ Noche guardada');
+};
+document.getElementById('clearNight').onclick = ()=>{
+  const e = upsertEntry(today);
+  e.night = {};
+  sPrevNight.value=0; sDay.value=0; sAfternoon.value=0;
+  outPrevNight.textContent=0; outDay.textContent=0; outAfternoon.textContent=0;
+  [sPrevNight,sDay,sAfternoon].forEach(paintRange);
+  renderDynamicForms(); showMsg('Noche vaciada');
+};
+
+document.getElementById('saveMorning').onclick = ()=>{
+  const e = upsertEntry(today);
+  e.morning.painMorning = Number(sMorning.value);
+  saveAll(); showMsg('✅ Mañana guardada');
+};
+document.getElementById('clearMorning').onclick = ()=>{
+  const e = upsertEntry(today);
+  e.morning = {};
+  sMorning.value=0; outMorning.textContent=0; paintRange(sMorning);
+  renderDynamicForms(); showMsg('Mañana vaciada');
+};
+
+document.getElementById('copyYesterday').onclick = ()=>{
+  const y = entries.find(x=>x.date===yesterday);
+  if(!y){ showMsg('No hay datos de ayer'); return; }
+  const t = upsertEntry(today);
+  t.morning = JSON.parse(JSON.stringify(y.morning||{}));
+  t.night = JSON.parse(JSON.stringify(y.night||{}));
+  renderDynamicForms();
+  showMsg('Copiado de ayer');
+};
+document.getElementById('clearToday').onclick = ()=>{
+  const t = upsertEntry(today);
+  t.morning = {}; t.night = {};
+  sPrevNight.value=0; sDay.value=0; sAfternoon.value=0; sMorning.value=0;
+  outPrevNight.textContent=0; outDay.textContent=0; outAfternoon.textContent=0; outMorning.textContent=0;
+  [sPrevNight,sDay,sAfternoon,sMorning].forEach(paintRange);
+  renderDynamicForms();
+  showMsg('Formulario vacío');
+};
+
+// ----- Exportar / Importar -----
+document.getElementById('exportBtn').onclick = ()=>{
+  const blob = new Blob([JSON.stringify({settings, entries}, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download='mi_dolor_datos.json'; a.click();
+  URL.revokeObjectURL(url);
+};
+document.getElementById('importBtn').onclick = ()=> document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = (e)=>{
+  const f = e.target.files[0]; if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      settings = data.settings || settings;
+      entries = data.entries || entries;
+      LS.save('settings', settings); LS.save('entries', entries);
+      renderSettings(); renderDynamicForms(); computeAndRender();
+      alert('Importado correctamente');
+    }catch(err){ alert('Archivo inválido'); }
+  };
+  reader.readAsText(f);
+};
+
+// ----- Racha, progreso e insights -----
+function streakCount(){
+  const dates = entries.map(e=>e.date).sort();
+  if(dates.length===0) return 0;
+  let streak=0;
+  let d = new Date();
+  while(true){
+    const ds = yyyymmdd(d);
+    if(entries.find(e=>e.date===ds)){ streak++; d = new Date(d.getTime()-86400000); }
+    else break;
+  }
+  return streak;
+}
+
+function analysisProgress(varKey){
+  // % de pares (D-1 var) vs (D dolor) hasta 21
+  let pairs=0;
+  for(let i=1;i<entries.length;i++){
+    const prev = entries[i-1], cur = entries[i];
+    const x = (prev.morning?.[varKey] ?? prev.night?.[varKey]);
+    const y = cur.night?.painDay;
+    if(x!==undefined && y!==undefined) pairs++;
+  }
+  return Math.min(100, Math.round(100*pairs/21));
+}
+
+function pearson(x, y){
+  const n = x.length;
+  if(n<3) return null;
+  const mean = arr => arr.reduce((a,b)=>a+b,0)/n;
+  const mx = mean(x), my = mean(y);
+  const num = x.map((xi,i)=> (xi-mx)*(y[i]-my)).reduce((a,b)=>a+b,0);
+  const denx = Math.sqrt(x.map(xi=> (xi-mx)**2).reduce((a,b)=>a+b,0));
+  const deny = Math.sqrt(y.map(yi=> (yi-my)**2).reduce((a,b)=>a+b,0));
+  if(denx===0 || deny===0) return null;
+  return num/(denx*deny);
+}
+
+function computeAndRender(){
+  // Racha
+  document.getElementById('streak').textContent = `Racha: ${streakCount()} días`;
+
+  // Progreso (simulamos 'sleepHours' con ninguna, y 'walkMin' real si activaste Caminata)
+  document.getElementById('sleepProgress').style.width = analysisProgress('sleepHours') + '%';
+  document.getElementById('stepsProgress').style.width = analysisProgress('walkMin') + '%';
+
+  // Insight: Caminata (D-1) vs Dolor (D)
+  const xs=[], ys=[];
+  for(let i=1;i<entries.length;i++){
+    const prev = entries[i-1], cur = entries[i];
+    if(prev.morning?.walkMin!==undefined && cur.night?.painDay!==undefined){
+      xs.push(Number(prev.morning.walkMin)||0);
+      ys.push(Number(cur.night.painDay)||0);
+    }
+  }
+  const r = pearson(xs, ys);
+  const insightBox = document.getElementById('insight');
+  if(r!==null && xs.length>=10){
+    insightBox.textContent = `Posible relación: caminata (ayer) y dolor (hoy) r=${r.toFixed(2)} (n=${xs.length}).`;
+  } else {
+    insightBox.textContent = `Sigue registrando para descubrir patrones. (n=${xs.length})`;
+  }
+
+  // Charts
+  renderCharts();
+}
+
+// ----- Charts -----
+let painLineChart, scatterChart;
+function renderCharts(){
+  const ctx1 = document.getElementById('painLine');
+  const ctx2 = document.getElementById('scatter');
+
+  const labels = entries.map(e=>e.date);
+  const pain = entries.map(e=> e.night?.painDay ?? null);
+
+  if(painLineChart) painLineChart.destroy();
+  painLineChart = new Chart(ctx1, {
+    type:'line',
+    data:{ labels, datasets:[{ label:'Dolor (día)', data:pain, spanGaps:true }]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ suggestedMin:0, suggestedMax:10 } } }
+  });
+
+  // Scatter walkMin (D-1) vs painDay (D)
+  const data = [];
+  for(let i=1;i<entries.length;i++){
+    const prev = entries[i-1], cur = entries[i];
+    if(prev.morning?.walkMin!==undefined && cur.night?.painDay!==undefined){
+      data.push({ x: prev.morning.walkMin, y: cur.night.painDay });
+    }
+  }
+  if(scatterChart) scatterChart.destroy();
+  scatterChart = new Chart(ctx2, {
+    type:'scatter',
+    data:{ datasets:[{ label:'Caminata (ayer) vs Dolor (hoy)', data }]},
+    options:{ responsive:true, maintainAspectRatio:false, scales:{ x:{ title:{display:true, text:'Caminata (min) (ayer)'}}, y:{ title:{display:true, text:'Dolor (hoy)'}, suggestedMin:0, suggestedMax:10 } } }
+  });
+}
+
+// ----- Init -----
+renderSettings();
+renderDynamicForms();
+computeAndRender();
+
+// Tab click already wired above
+</script>
+</body>
+</html>
