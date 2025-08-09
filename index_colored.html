@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Dolor (demo con sliders coloreados)</title>
+<style>
+:root{
+  --track-bg:#E2E8F0;
+  --thumb:#2b6cb0;
+  --green:#38A169; /* <=2 */
+  --yellow:#ECC94B; /* 3-7 */
+  --red:#E53E3E; /* 8-10 */
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin:0;background:#f6f8fb;color:#1a202c}
+header{background:#2b6cb0;color:#fff;padding:16px;text-align:center}
+main{padding:16px;max-width:800px;margin:auto}
+section{background:#fff;padding:16px;margin-bottom:16px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+h1{margin:0;font-size:24px}h2{margin:0 0 12px}
+label{display:block;margin:12px 0 6px}
+/* Base range styling */
+input[type=range]{
+  -webkit-appearance:none; appearance:none; width:100%; height:14px;
+  border-radius:999px; outline:none; background:var(--track-bg);
+  transition:background 120ms ease;
+}
+/* Colored track via background gradient set in JS */
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:26px; height:26px; border-radius:50%;
+  background:var(--thumb); border:none; box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+input[type=range]::-moz-range-thumb{
+  width:26px; height:26px; border:none; border-radius:50%; background:var(--thumb);
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+/* Firefox track */
+input[type=range]::-moz-range-track{
+  height:14px; background:transparent; border:none;
+}
+/* For Firefox, we also color ::-moz-range-progress */
+input[type=range]::-moz-range-progress{
+  height:14px; background:var(--green); border-radius:999px;
+}
+.value{font-weight:600;margin-left:8px}
+button{padding:10px 14px;border:none;border-radius:10px;font-size:15px}
+button.primary{background:#2b6cb0;color:#fff}
+#message{margin-top:8px;font-size:14px;color:green}
+small.muted{color:#4a5568}
+.tip{font-size:14px;color:#4a5568;margin-top:8px}
+.legend{display:flex;gap:10px;align-items:center;margin-top:8px;font-size:14px;color:#4a5568}
+.legend .dot{width:10px;height:10px;border-radius:50%}
+</style>
+</head>
+<body>
+<header><h1>Mi Dolor</h1></header>
+<main>
+  <section>
+    <h2>Registro diario</h2>
+
+    <label>Dolor de la mañana (0–10)
+      <span class="value" id="v-morning">0</span>
+    </label>
+    <input type="range" id="painMorning" min="0" max="10" step="1" value="0">
+
+    <label>Dolor de la tarde (0–10)
+      <span class="value" id="v-afternoon">0</span>
+    </label>
+    <input type="range" id="painAfternoon" min="0" max="10" step="1" value="0">
+
+    <label>Dolor de la noche anterior (0–10)
+      <span class="value" id="v-night">0</span>
+    </label>
+    <input type="range" id="painNight" min="0" max="10" step="1" value="0">
+
+    <div class="legend">
+      <div class="dot" style="background:var(--green)"></div><span>0–2 Bajo</span>
+      <div class="dot" style="background:var(--yellow)"></div><span>3–7 Medio</span>
+      <div class="dot" style="background:var(--red)"></div><span>8–10 Alto</span>
+    </div>
+
+    <div style="margin-top:12px">
+      <button class="primary" id="saveBtn">Guardar</button>
+      <div id="message"></div>
+    </div>
+    <p class="tip">Consejo: mueve el control y verás que la parte “rellena” cambia de color según el nivel.</p>
+  </section>
+
+  <section>
+    <h2>Historial</h2>
+    <ul id="history"></ul>
+    <small class="muted">Los datos se guardan solo en tu navegador (local).</small>
+  </section>
+</main>
+
+<script>
+function lsLoad(){ return JSON.parse(localStorage.getItem('miDolorData')||'[]'); }
+function lsSave(arr){ localStorage.setItem('miDolorData', JSON.stringify(arr)); }
+
+function thresholdColor(val){
+  if(val <= 2) return getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
+  if(val <= 7) return getComputedStyle(document.documentElement).getPropertyValue('--yellow').trim();
+  return getComputedStyle(document.documentElement).getPropertyValue('--red').trim();
+}
+
+// For WebKit/Blink: simulate filled track using background gradient
+function paintRange(el){
+  const max = Number(el.max||10);
+  const min = Number(el.min||0);
+  const val = Number(el.value||0);
+  const pct = ( (val-min) / (max-min) ) * 100;
+  const color = thresholdColor(val);
+  el.style.background = `linear-gradient(to right, ${color} 0% ${pct}%, var(--track-bg) ${pct}% 100%)`;
+  // For Firefox progress color (can't set per-element easily), we add a data-color and CSS var not supported on progress.
+  el.dataset.color = color;
+}
+
+// Wire sliders
+const sMorning = document.getElementById('painMorning');
+const sAfternoon = document.getElementById('painAfternoon');
+const sNight = document.getElementById('painNight');
+const outMorning = document.getElementById('v-morning');
+const outAfternoon = document.getElementById('v-afternoon');
+const outNight = document.getElementById('v-night');
+
+[sMorning, sAfternoon, sNight].forEach(el=>{
+  el.addEventListener('input', ()=>{
+    paintRange(el);
+    if(el===sMorning) outMorning.textContent = el.value;
+    if(el===sAfternoon) outAfternoon.textContent = el.value;
+    if(el===sNight) outNight.textContent = el.value;
+  });
+  // initial paint
+  paintRange(el);
+});
+
+// Save & history
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  const data = lsLoad();
+  const today = new Date().toISOString().split('T')[0];
+  const entry = {
+    date: today,
+    painMorning: Number(sMorning.value),
+    painAfternoon: Number(sAfternoon.value),
+    painNight: Number(sNight.value)
+  };
+  const ix = data.findIndex(d=>d.date===today);
+  if(ix>=0) data[ix] = entry; else data.push(entry);
+  lsSave(data);
+  document.getElementById('message').textContent = '✅ Guardado';
+  renderHistory();
+});
+
+function renderHistory(){
+  const data = lsLoad();
+  const ul = document.getElementById('history');
+  ul.innerHTML='';
+  data.sort((a,b)=> a.date.localeCompare(b.date));
+  data.forEach(e=>{
+    const li = document.createElement('li');
+    li.textContent = `${e.date} → Mañana: ${e.painMorning}, Tarde: ${e.painAfternoon}, Noche: ${e.painNight}`;
+    ul.appendChild(li);
+  });
+}
+
+renderHistory();
+</script>
+</body>
+</html>
