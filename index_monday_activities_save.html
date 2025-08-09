@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Dolor — diario simple + personalización</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --track-bg:#E2E8F0;
+  --thumb:#2b6cb0;       /* azul marca */
+  --brand:#2b6cb0;
+  --green:#38A169;
+  --yellow:#ECC94B;
+  --red:#E53E3E;
+  --card:#ffffff;
+  --ink:#1a202c;
+  --muted:#4a5568;
+}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;margin:0;background:#f6f8fb;color:var(--ink)}
+header{background:var(--brand);color:#fff;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+h1{font-size:22px;margin:0}
+#streak{font-weight:600}
+main{padding:16px;max-width:900px;margin:0 auto}
+.card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+h2{margin:0 0 12px 0;font-size:18px}
+.small{color:var(--muted);font-size:13px}
+.field{margin-bottom:14px}
+.field label{display:block;margin-bottom:6px}
+.value{font-weight:600;margin-left:8px}
+/* weekly calendar */
+.weekbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.arrow{background:#e2e8f0;border:none;border-radius:8px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer}
+.days{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.days::-webkit-scrollbar{display:none}
+.day{min-width:52px;background:#edf2f7;border-radius:12px;padding:8px 6px;text-align:center;cursor:pointer;color:#1a202c;border:1px solid transparent}
+.day .dow{font-size:11px;color:#4a5568}
+.day .num{font-size:16px;font-weight:700;margin-top:2px}
+.day .check{font-size:12px;margin-top:2px;color:#38A169;display:none}
+.day.completed .check{display:block}
+.day.selected{background:#1a365d;color:#fff;border-color:#2b6cb0}
+/* sliders (base style) */
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;border-radius:999px;outline:none;background:var(--track-bg);transition:background 120ms ease}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:var(--thumb);border:none;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+input[type=range]::-moz-range-thumb{width:26px;height:26px;border:none;border-radius:50%;background:var(--thumb);box-shadow:0 2px 6px rgba(0,0,0,.25)}
+input[type=range]::-moz-range-track{height:14px;background:transparent;border:none}
+/* buttons */
+button{background:#e2e8f0;border:none;border-radius:10px;padding:10px 14px;font-size:15px;cursor:pointer}
+button.primary{background:#2b6cb0;color:#fff}
+button:hover{filter:brightness(0.98)}
+/* activities */
+.grid{display:grid;grid-template-columns:1fr;gap:10px}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{padding:6px 10px}
+.badge{display:inline-block;background:#edf2f7;color:#1a202c;padding:4px 8px;border-radius:999px;font-size:12px;margin-left:6px}
+/* data box */
+.data-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf2f7}
+.data-row:last-child{border-bottom:none}
+.legend{display:flex;gap:10px;align-items:center;margin-top:8px;font-size:13px;color:#4a5568}
+.legend .dot{width:10px;height:10px;border-radius:50%}
+/* settings collapsible */
+.settings-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;background:#edf2f7;border-radius:10px;padding:8px 12px;width:max-content}
+#settingsBody{display:none;margin-top:10px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf2f7}
+.settings-row:last-child{border-bottom:none}
+.settings-row .name{font-size:15px}
+.settings-row .actions{display:flex;gap:8px}
+input[type=text].inline{padding:8px 10px;border-radius:8px;border:1px solid #e2e8f0;width:100%}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mi Dolor</h1>
+  <div id="streak">Racha: 0 días</div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>Diario</h2>
+    <div class="weekbar">
+      <button id="prevWeek" class="arrow" title="Semana anterior">◀</button>
+      <div id="weekDays" class="days"></div>
+      <button id="nextWeek" class="arrow" title="Semana siguiente">▶</button>
+    </div>
+    <div class="small" id="selectedDateLabel"></div>
+
+    <div class="field">
+      <label>Dolor de la noche anterior (0–10) <span class="value" id="v-prevNight">0</span></label>
+      <input type="range" id="painPrevNight" min="0" max="10" step="1" value="0">
+    </div>
+    <div class="field">
+      <label>Dolor de la mañana (0–10) <span class="value" id="v-morning">0</span></label>
+      <input type="range" id="painMorning" min="0" max="10" step="1" value="0">
+    </div>
+    <div class="field">
+      <label>Dolor de la tarde (0–10) <span class="value" id="v-afternoon">0</span></label>
+      <input type="range" id="painAfternoon" min="0" max="10" step="1" value="0">
+    </div>
+
+    <div class="legend">
+      <div class="dot" style="background:var(--green)"></div><span>0–2 Bajo</span>
+      <div class="dot" style="background:var(--yellow)"></div><span>3–7 Medio</span>
+      <div class="dot" style="background:var(--red)"></div><span>8–10 Alto</span>
+    </div>
+
+    <div style="margin-top:12px">
+      <button class="primary" id="saveBtn">Guardar</button>
+      <span id="message" class="small" style="margin-left:8px"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Datos del día</h2>
+    <div id="dataBox">
+      <div class="small">Aún no hay datos guardados para este día.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Actividades de hoy <span class="badge">personalizable</span></h2>
+    <div id="activitiesForm" class="grid"></div>
+    <div style="margin-top:12px">
+      <button class="primary" id="saveActivitiesBtn">Guardar actividades</button>
+      <span id="messageActivities" class="small" style="margin-left:8px"></span>
+    </div>
+    <div class="small" style="margin-top:8px">Activa o desactiva variables y crea nuevas en Ajustes.</div>
+  </section>
+
+  <section class="card">
+    <div class="settings-toggle" id="settingsToggle">⚙️ Mostrar ajustes</div>
+    <div id="settingsBody">
+      <h2 style="margin-top:10px">Ajustes</h2>
+      <p class="small">Elige qué actividades se muestran y agrega variables personalizadas (0–10, barra azul).</p>
+      <div id="settingsList"></div>
+      <hr style="border:none;border-top:1px solid #edf2f7;margin:12px 0">
+      <div class="field">
+        <label>Agregar variable personalizada</label>
+        <input type="text" id="customVarName" class="inline" placeholder="Ej.: Rigidez de pierna">
+        <div style="margin-top:8px">
+          <button id="addCustomVar" class="primary">Agregar</button>
+        </div>
+        <div class="small">Las variables personalizadas tendrán un control de 0 a 10 y se pueden eliminar.</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <small class="small">Demo de “Mi Dolor” — tus datos se guardan solo en este navegador.</small>
+</footer>
+
+<script>
+// --- Storage ---
+const LS = { load(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(_){ return d } }, save(k,v){ localStorage.setItem(k, JSON.stringify(v)) } };
+
+// --- Settings & entries ---
+const DEFAULT_SETTINGS = {
+  variables: {
+    stress:true, mood:true, busy:true, exercise:true, exerciseLegs:true,
+    walkMin:true, standHours:true, hydration:true, alcohol:true, notes:true
+  },
+  customVars: [] // [{key:'custom:123', label:'Nombre', enabled:true}]
+};
+let settings = LS.load('settings_v2', DEFAULT_SETTINGS);
+let entries = LS.load('entries_simple_v2', []); // [{date, pain:{}, vars:{}, custom:{key:number}}]
+
+// --- Date helpers ---
+const fmtDate = (d)=> d.toISOString().slice(0,10);
+const addDays = (d,n)=> new Date(d.getFullYear(), d.getMonth(), d.getDate()+n);
+let selectedDate = new Date();
+function selectedISO(){ return fmtDate(selectedDate); }
+
+// --- Upsert/Get ---
+function upsert(iso){
+  let e = entries.find(x=>x.date===iso);
+  if(!e){ e = { date: iso, pain:{}, vars:{}, custom:{} }; entries.push(e); }
+  return e;
+}
+function get(iso){ return entries.find(x=>x.date===iso); }
+function saveAll(){ LS.save('entries_simple_v2', entries); renderWeek(); renderSelectedLabel(); renderDataBox(); renderActivitiesForm(); renderStreak(); }
+
+// --- Slider painters ---
+function paintRangeColored(el){ // green/yellow/red (for pain only)
+  const max=Number(el.max||10), min=Number(el.min||0), val=Number(el.value||0);
+  const pct=((val-min)/(max-min))*100;
+  let color = val<=2 ? getVar('--green') : (val<=7 ? getVar('--yellow') : getVar('--red'));
+  el.style.background = `linear-gradient(to right, ${color} 0% ${pct}%, var(--track-bg) ${pct}% 100%)`;
+}
+function paintRangeBlue(el){ // solid brand blue fill (for activities & custom)
+  const max=Number(el.max||10), min=Number(el.min||0), val=Number(el.value||0);
+  const pct=((val-min)/(max-min))*100;
+  const color = getVar('--brand');
+  el.style.background = `linear-gradient(to right, ${color} 0% ${pct}%, var(--track-bg) ${pct}% 100%)`;
+}
+function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// --- Pain elements ---
+const sPrevNight = document.getElementById('painPrevNight');
+const sMorning = document.getElementById('painMorning');
+const sAfternoon = document.getElementById('painAfternoon');
+const vPrevNight = document.getElementById('v-prevNight');
+const vMorning = document.getElementById('v-morning');
+const vAfternoon = document.getElementById('v-afternoon');
+[sPrevNight,sMorning,sAfternoon].forEach(el=>{ el.addEventListener('input',()=>paintRangeColored(el)); paintRangeColored(el); });
+sPrevNight.addEventListener('input', ()=> vPrevNight.textContent = sPrevNight.value);
+sMorning.addEventListener('input', ()=> vMorning.textContent = sMorning.value);
+sAfternoon.addEventListener('input', ()=> vAfternoon.textContent = sAfternoon.value);
+
+// --- Save pain ---
+document.getElementById('saveBtn').onclick = ()=>{
+  const e = upsert(selectedISO());
+  e.pain.prevNight = Number(sPrevNight.value);
+  e.pain.morning = Number(sMorning.value);
+  e.pain.afternoon = Number(sAfternoon.value);
+  saveAll();
+  document.getElementById('message').textContent = '✅ Guardado';
+  setTimeout(()=> document.getElementById('message').textContent='', 1800);
+};
+
+// --- Data box ---
+function renderDataBox(){
+  const e = get(selectedISO());
+  const box = document.getElementById('dataBox');
+  if(!e || !e.pain || (e.pain.prevNight==null && e.pain.morning==null && e.pain.afternoon==null)){
+    box.innerHTML = '<div class="small">Aún no hay datos guardados para este día.</div>';
+    return;
+  }
+  box.innerHTML = `
+    <div class="data-row"><span>Noche anterior</span><strong>${e.pain.prevNight ?? '-'}</strong></div>
+    <div class="data-row"><span>Mañana</span><strong>${e.pain.morning ?? '-'}</strong></div>
+    <div class="data-row"><span>Tarde</span><strong>${e.pain.afternoon ?? '-'}</strong></div>
+  `;
+}
+
+// --- Predefined activities ---
+const PRESET_DEFS = {
+  stress:{ label:'Estrés (0–10)', type:'slider', min:0, max:10, step:1, paint:'blue' },
+  mood:{ label:'Estado de ánimo (0–10)', type:'slider', min:0, max:10, step:1, paint:'blue' },
+  busy:{ label:'Ocupación del día (0–10)', type:'slider', min:0, max:10, step:1, paint:'blue' },
+  exercise:{ label:'¿Hiciste ejercicios?', type:'toggle' },
+  exerciseLegs:{ label:'¿Entrenaste piernas?', type:'toggle', dependsOn:'exercise' },
+  walkMin:{ label:'Caminata (min)', type:'stepper', min:0, max:600, step:5 },
+  standHours:{ label:'Tiempo de pie (horas)', type:'stepper', min:0, max:18, step:1 },
+  hydration:{ label:'Hidratación (vasos)', type:'stepper', min:0, max:20, step:1 },
+  alcohol:{ label:'¿Consumiste alcohol?', type:'toggle', extra:'cups' },
+  notes:{ label:'Notas', type:'text' }
+};
+
+function renderActivitiesForm(){
+  const e = upsert(selectedISO());
+  const cont = document.getElementById('activitiesForm');
+  cont.innerHTML='';
+
+  // Presets
+  for(const key of Object.keys(PRESET_DEFS)){
+    if(!settings.variables[key]) continue;
+    const def = PRESET_DEFS[key];
+    if(def.dependsOn && !e.vars[def.dependsOn]) continue;
+    const row = document.createElement('div'); row.className='field';
+    const label = document.createElement('label'); label.textContent = def.label; row.appendChild(label);
+
+    switch(def.type){
+      case 'slider': {
+        const input=document.createElement('input'); input.type='range'; input.min=def.min; input.max=def.max; input.step=def.step; input.value=e.vars[key] ?? 0;
+        const out=document.createElement('span'); out.className='value'; out.textContent=input.value;
+        input.oninput=()=>{ e.vars[key]=Number(input.value); out.textContent=input.value; paintRangeBlue(input); };
+        row.appendChild(input); row.appendChild(out); paintRangeBlue(input);
+      } break;
+
+      case 'toggle': {
+        const sel=document.createElement('select');
+        ['No','Sí'].forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+        sel.value = e.vars[key] ? 'Sí':'No';
+        sel.onchange=()=>{ e.vars[key]=(sel.value==='Sí'); renderActivitiesForm(); };
+        row.appendChild(sel);
+
+        // Special case: alcohol cups
+        if(def.extra==='cups' && e.vars[key]===true){
+          const wrap=document.createElement('div'); wrap.className='stepper'; wrap.style.marginTop='8px';
+          const minus=document.createElement('button'); minus.textContent='–';
+          const val=document.createElement('span'); val.textContent = (e.vars.alcoholCups ?? 0);
+          const plus=document.createElement('button'); plus.textContent='+';
+          const clamp=(v)=> Math.min(20, Math.max(0, v));
+          minus.onclick=(ev)=>{ ev.preventDefault(); e.vars.alcoholCups=clamp((e.vars.alcoholCups??0)-1); val.textContent=e.vars.alcoholCups; };
+          plus.onclick=(ev)=>{ ev.preventDefault(); e.vars.alcoholCups=clamp((e.vars.alcoholCups??0)+1); val.textContent=e.vars.alcoholCups; };
+          wrap.appendChild(minus); wrap.appendChild(val); wrap.appendChild(plus);
+          const sublab=document.createElement('div'); sublab.className='small'; sublab.textContent='Cantidad (copas)';
+          row.appendChild(sublab);
+          row.appendChild(wrap);
+        }
+      } break;
+
+      case 'stepper': {
+        const wrap=document.createElement('div'); wrap.className='stepper';
+        const minus=document.createElement('button'); minus.textContent='–';
+        const val=document.createElement('span'); val.textContent = e.vars[key] ?? 0;
+        const plus=document.createElement('button'); plus.textContent='+';
+        const clamp=(v)=> Math.min(def.max, Math.max(def.min, v));
+        minus.onclick=(ev)=>{ ev.preventDefault(); e.vars[key]=clamp((e.vars[key]??0)-def.step); val.textContent=e.vars[key]; };
+        plus.onclick=(ev)=>{ ev.preventDefault(); e.vars[key]=clamp((e.vars[key]??0)+def.step); val.textContent=e.vars[key]; };
+        row.appendChild(wrap); wrap.appendChild(minus); wrap.appendChild(val); wrap.appendChild(plus);
+      } break;
+
+      case 'text': {
+        const inp=document.createElement('input'); inp.type='text'; inp.placeholder='Escribe una nota (opcional)'; inp.value=e.vars[key] ?? '';
+        inp.oninput=()=>{ e.vars[key]=inp.value; };
+        row.appendChild(inp);
+      } break;
+    }
+    cont.appendChild(row);
+  }
+
+  // Custom vars (blue slider 0–10)
+  settings.customVars.forEach(cv=>{
+    if(cv.enabled === false) return;
+    const row=document.createElement('div'); row.className='field';
+    const lab=document.createElement('label'); lab.textContent = cv.label + ' (0–10)';
+    const input=document.createElement('input'); input.type='range'; input.min=0; input.max=10; input.step=1;
+    const key=cv.key;
+    const e2 = upsert(selectedISO());
+    input.value = (e2.custom && typeof e2.custom[key] === 'number') ? e2.custom[key] : 0;
+    const out=document.createElement('span'); out.className='value'; out.textContent=input.value;
+    input.oninput=()=>{ e2.custom[key]=Number(input.value); out.textContent=input.value; paintRangeBlue(input); };
+    row.appendChild(lab); row.appendChild(input); row.appendChild(out); paintRangeBlue(input);
+    cont.appendChild(row);
+  });
+}
+
+// Save activities button (persists current in-memory values)
+document.getElementById('saveActivitiesBtn').onclick=()=>{
+  // Ensure entry exists and write current UI values already kept by oninput handlers
+  const e = upsert(selectedISO());
+  LS.save('entries_simple_v2', entries); // persist
+  document.getElementById('messageActivities').textContent='✅ Actividades guardadas';
+  setTimeout(()=> document.getElementById('messageActivities').textContent='', 1800);
+  renderStreak(); renderWeek(); renderDataBox();
+};
+
+// --- Settings (collapsible) ---
+const settingsToggle = document.getElementById('settingsToggle');
+const settingsBody = document.getElementById('settingsBody');
+settingsToggle.onclick = ()=>{
+  const open = settingsBody.style.display === 'block';
+  settingsBody.style.display = open ? 'none' : 'block';
+  settingsToggle.textContent = open ? '⚙️ Mostrar ajustes' : '⚙️ Ocultar ajustes';
+};
+function renderSettingsList(){
+  const list=document.getElementById('settingsList'); list.innerHTML='';
+
+  // Preset toggles
+  Object.keys(PRESET_DEFS).forEach(key=>{
+    const row=document.createElement('div'); row.className='settings-row';
+    const name=document.createElement('div'); name.className='name'; name.textContent = PRESET_DEFS[key].label;
+    const actions=document.createElement('div'); actions.className='actions';
+    const chk=document.createElement('input'); chk.type='checkbox'; chk.checked = !!settings.variables[key];
+    chk.onchange=()=>{ settings.variables[key]=chk.checked; LS.save('settings_v2', settings); renderActivitiesForm(); };
+    actions.appendChild(chk);
+    row.appendChild(name); row.appendChild(actions); list.appendChild(row);
+  });
+
+  // Custom vars list with enable/remove
+  settings.customVars.forEach(cv=>{
+    const row=document.createElement('div'); row.className='settings-row';
+    const name=document.createElement('div'); name.className='name'; name.textContent = cv.label;
+    const actions=document.createElement('div'); actions.className='actions';
+    const chk=document.createElement('input'); chk.type='checkbox'; chk.checked = cv.enabled !== false;
+    chk.onchange=()=>{ cv.enabled = chk.checked; LS.save('settings_v2', settings); renderActivitiesForm(); };
+    const del=document.createElement('button'); del.textContent='Eliminar'; del.onclick=()=>{
+      settings.customVars = settings.customVars.filter(x=>x.key!==cv.key);
+      entries.forEach(e=>{ if(e.custom) delete e.custom[cv.key]; });
+      LS.save('settings_v2', settings); LS.save('entries_simple_v2', entries);
+      renderActivitiesForm(); renderSettingsList();
+    };
+    actions.appendChild(chk); actions.appendChild(del);
+    row.appendChild(name); row.appendChild(actions); list.appendChild(row);
+  });
+}
+
+// Add custom var
+document.getElementById('addCustomVar').onclick=()=>{
+  const name = (document.getElementById('customVarName').value || '').trim();
+  if(!name){ alert('Escribe un nombre para la variable.'); return; }
+  const key = 'custom:' + Date.now();
+  settings.customVars.push({ key, label: name, enabled: true });
+  LS.save('settings_v2', settings);
+  document.getElementById('customVarName').value='';
+  renderSettingsList();
+  renderActivitiesForm();
+};
+
+// --- Week bar ---
+// Start week on Monday
+function startOfWeekMonday(d){
+  const day = d.getDay(); // 0=Dom,1=Lun,...
+  const diff = (day === 0 ? -6 : 1 - day); // move back to Monday
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + diff);
+}
+let weekStart = startOfWeekMonday(selectedDate);
+function labelFor(d){ const days=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom']; return {dow:days[(d.getDay()+6)%7], num:String(d.getDate()).padStart(2,'0')}; }
+function renderWeek(){
+  const wrap=document.getElementById('weekDays'); wrap.innerHTML='';
+  for(let i=0;i<7;i++){
+    const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()+i);
+    const iso = fmtDate(d);
+    const {dow,num}=labelFor(d);
+    const div=document.createElement('div'); div.className='day'; div.dataset.iso=iso;
+    if(iso===selectedISO()) div.classList.add('selected');
+    const e=get(iso);
+    const completed = e && (e.pain && (e.pain.prevNight!=null || e.pain.morning!=null || e.pain.afternoon!=null));
+    if(completed) div.classList.add('completed');
+    div.innerHTML = `<div class="dow">${dow}</div><div class="num">${num}</div><div class="check">✓</div>`;
+    div.onclick=()=>{ selectedDate = d; renderSelectedLabel(); renderWeek(); loadForm(); };
+    wrap.appendChild(div);
+  }
+}
+document.getElementById('prevWeek').onclick=()=>{ weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()-7); renderWeek(); };
+document.getElementById('nextWeek').onclick=()=>{ weekStart = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()+7); renderWeek(); };
+function renderSelectedLabel(){
+  const d=selectedDate; const opts={ weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  document.getElementById('selectedDateLabel').textContent = `Estás registrando: ${d.toLocaleDateString('es-ES', opts)}`;
+}
+
+// --- Streak ---
+function renderStreak(){
+  let streak=0; let d=new Date();
+  while(true){
+    const iso=fmtDate(d); const e=get(iso);
+    if(e && e.pain && (e.pain.prevNight!=null || e.pain.morning!=null || e.pain.afternoon!=null)){
+      streak++; d=new Date(d.getFullYear(), d.getMonth(), d.getDate()-1);
+    }else break;
+  }
+  document.getElementById('streak').textContent = `Racha: ${streak} días`;
+}
+
+// --- Load form for selected ---
+function loadForm(){
+  const e = upsert(selectedISO());
+  sPrevNight.value = e.pain.prevNight ?? 0; vPrevNight.textContent = sPrevNight.value; paintRangeColored(sPrevNight);
+  sMorning.value = e.pain.morning ?? 0; vMorning.textContent = sMorning.value; paintRangeColored(sMorning);
+  sAfternoon.value = e.pain.afternoon ?? 0; vAfternoon.textContent = sAfternoon.value; paintRangeColored(sAfternoon);
+  renderActivitiesForm();
+  renderDataBox();
+}
+
+// --- Init ---
+function init(){
+  renderWeek();
+  renderSelectedLabel();
+  renderStreak();
+  loadForm();
+  renderSettingsList();
+}
+init();
+</script>
+</body>
+</html>
